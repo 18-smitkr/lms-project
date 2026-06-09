@@ -29,6 +29,7 @@ urlpatterns = [
 
     # LMS API Routes
     path('api/', include('courses.urls')),
+    path('api/', include('payments.urls')),
     
     path('api/auth/', include('accounts.urls')),
     # JWT Authentication Endpoints

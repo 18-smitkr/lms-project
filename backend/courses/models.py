@@ -5,12 +5,16 @@ from accounts.models import User
 class Course(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(max_length=1000)
+    price = models.DecimalField(
+    max_digits=10,
+    decimal_places=2,
+    default=0
+   )
     instructor = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='courses_created'
     )
-    
 
     created_at = models.DateTimeField(
         auto_now_add=True
