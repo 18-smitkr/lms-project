@@ -10,6 +10,16 @@ from .views import (
     create_course,
     update_course,
     delete_course,
+    create_module,
+    module_detail,
+    course_modules,
+    update_module,
+    delete_module,
+    create_lesson,
+    module_lessons,
+    update_lesson,
+    delete_lesson,
+    lesson_detail,
 )
 
 urlpatterns = [
@@ -23,4 +33,13 @@ urlpatterns = [
     path('create-course/',create_course,name='create_course'),
     path('update-course/<int:course_id>/',update_course,name='update_course'),
     path('delete-course/<int:course_id>/',delete_course,name='delete_course'),
+    path('create-module/<int:course_id>/',create_module,name='create_module'),
+    path('update-module/<int:module_id>/',update_module,name='update_module'),
+    path('delete-module/<int:module_id>/',delete_module,name='delete_module'),
+    path('create-lesson/<int:module_id>/',create_lesson,name='create_lesson'),
+    path('module-lessons/<int:module_id>/',module_lessons,name='module_lessons'),
+    path('update-lesson/<int:lesson_id>/',update_lesson,name='update_lesson'),
+    path('delete-lesson/<int:lesson_id>/',delete_lesson,name='delete_lesson'),
+    path('lesson-detail/<int:lesson_id>/',lesson_detail,name='lesson_detail'),
+    path('course-modules/<int:course_id>/',course_modules,name='course_modules'),
 ]

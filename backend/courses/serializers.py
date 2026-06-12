@@ -93,4 +93,5 @@ class CreateCourseSerializer(serializers.ModelSerializer):
         fields = [
             'title',
             'description'
+            'price',
         ]           

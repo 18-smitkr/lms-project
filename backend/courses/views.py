@@ -268,4 +268,368 @@ def delete_course(request, course_id):
     return Response(
         {"message": "Course deleted successfully"},
         status=status.HTTP_200_OK
+    )   
+    
+    
+# Module API
+# Purpose:
+# - Allows an instructor to add modules to a course
+# - Example:
+#   Python Course
+#      ├── Introduction
+#      ├── Variables
+#      └── Functions
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_module(request, course_id):
+
+    # Fetch course or return 404 if course doesn't exist
+    course = get_object_or_404(
+        Course,
+        id=course_id
+    )
+
+    # Security Check
+    # Only the instructor who created the course
+    # can add modules to it
+    if course.instructor != request.user:
+        return Response(
+            {
+                "error": "Only course instructor can add modules"
+            },
+            status=403
+        )
+
+    # Validate incoming JSON data
+    serializer = ModuleSerializer(
+        data=request.data
+    )
+
+    if serializer.is_valid():
+
+        # Save module and automatically link it
+        # to the selected course
+        serializer.save(
+            course=course
+        )
+
+        return Response(
+            serializer.data,
+            status=201
+        )
+
+    # Return validation errors if data is invalid
+    return Response(
+        serializer.errors,
+        status=400
+   )     
+
+
+# Module List API
+# Purpose:
+# - Show all modules inside a specific course
+# Example:
+# Python Course
+#    ├── Introduction
+#    ├── Variables
+#    └── Functions
+@api_view(['GET'])
+def course_modules(request, course_id):
+
+    modules = Module.objects.filter(
+        course_id=course_id
+    )
+
+    serializer = ModuleSerializer(
+        modules,
+        many=True
+    )
+
+    return Response(serializer.data)
+ 
+# Module Detail API
+# Purpose:
+# - Returns complete information about a module
+# - Also returns all lessons inside that module
+#
+# Example:
+# Python Basics
+#    ├── Variables
+#    ├── Data Types
+#    └── Functions
+
+@api_view(['GET'])
+def module_detail(request, module_id):
+
+    # Fetch module or return 404
+    module = get_object_or_404(
+        Module,
+        id=module_id
+    )
+
+    serializer = ModuleSerializer(
+        module
+    )
+
+    return Response(
+        serializer.data
+    )
+    
+    
+    
+        
+# Update Module API
+# Purpose:
+# - Allows instructor to edit an existing module
+# Example:
+#   "Python Basics" -> "Python Fundamentals"
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_module(request, module_id):
+
+    # Fetch module or return 404
+    module = get_object_or_404(
+        Module,
+        id=module_id
+    )
+
+    # Ownership check
+    # Only course creator can update module
+    if module.course.instructor != request.user:
+        return Response(
+            {
+                "error": "You can update only your modules"
+            },
+            status=403
+        )
+
+    serializer = ModuleSerializer(
+        module,
+        data=request.data,
+        partial=True
+    )
+
+    if serializer.is_valid():
+
+        # Save updated data
+        serializer.save()
+
+        return Response(serializer.data)
+
+    return Response(
+        serializer.errors,
+        status=400
+    )    
+
+# Delete Module API
+# Purpose:
+# - Allows instructor to delete a module
+#
+# Example:
+# Python Course
+#    ├── Introduction
+#    ├── Variables
+#    └── Functions
+#
+# If "Introduction" module is deleted,
+# all lessons inside it will also be deleted
+# because of on_delete=models.CASCADE
+#
+# Security:
+# - Only the course instructor can delete modules
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_module(request, module_id):
+
+    # Fetch module or return 404
+    module = get_object_or_404(
+        Module,
+        id=module_id
+    )
+
+    # Ownership check
+    # Only instructor who owns the course
+    # can delete the module
+    if module.course.instructor != request.user:
+        return Response(
+            {
+                "error": "You can delete only your modules"
+            },
+            status=403
+        )
+
+    # Delete module
+    module.delete()
+
+    return Response(
+        {
+            "message": "Module deleted successfully"
+        },
+        status=200
+    )   
+    
+# Create Lesson API
+# Purpose:
+# - Allows instructor to add lessons inside a module
+#
+# Example:
+# Module: Python Basics
+#      ├── Variables
+#      ├── Data Types
+#      └── Functions
+#
+# Security:
+# - Only course instructor can add lessons
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_lesson(request, module_id):
+
+    # Fetch module or return 404
+    module = get_object_or_404(
+        Module,
+        id=module_id
+    )
+
+    # Ownership check
+    if module.course.instructor != request.user:
+        return Response(
+            {
+                "error": "Only instructor can add lessons"
+            },
+            status=403
+        )
+
+    serializer = LessonSerializer(
+        data=request.data
+    )
+
+    if serializer.is_valid():
+
+        # Automatically attach lesson to module
+        serializer.save(
+            module=module
+        )
+
+        return Response(
+            serializer.data,
+            status=201
+        )
+
+    return Response(
+        serializer.errors,
+        status=400
+    )  
+    
+    
+# Lesson List API
+# Purpose:
+# - Show all lessons inside a specific module
+
+@api_view(['GET'])
+def module_lessons(request, module_id):
+
+    lessons = Lesson.objects.filter(
+        module_id=module_id
+    )
+
+    serializer = LessonSerializer(
+        lessons,
+        many=True
+    )
+
+    return Response(serializer.data)  
+
+
+
+# Lesson Detail API
+# Purpose:
+# - Returns complete information about a lesson
+# - Used when student opens a lesson
+
+@api_view(['GET'])
+def lesson_detail(request, lesson_id):
+
+    # Fetch lesson or return 404
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id
+    )
+
+    serializer = LessonSerializer(
+        lesson
+    )
+
+    return Response(
+        serializer.data
+    )    
+
+# Update Lesson API
+# Purpose:
+# - Instructor can edit lesson details
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_lesson(request, lesson_id):
+
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id
+    )
+
+    # Ownership check
+    if lesson.module.course.instructor != request.user:
+        return Response(
+            {
+                "error": "You can update only your lessons"
+            },
+            status=403
+        )
+
+    serializer = LessonSerializer(
+        lesson,
+        data=request.data,
+        partial=True
+    )
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+
+    return Response(
+        serializer.errors,
+        status=400
+    )
+    
+# Delete Lesson API
+# Purpose:
+# - Instructor can delete lessons
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_lesson(request, lesson_id):
+
+    lesson = get_object_or_404(
+        Lesson,
+        id=lesson_id
+    )
+
+    # Ownership check
+    if lesson.module.course.instructor != request.user:
+        return Response(
+            {
+                "error": "You can delete only your lessons"
+            },
+            status=403
+        )
+
+    lesson.delete()
+
+    return Response(
+        {
+            "message": "Lesson deleted successfully"
+        }
     )    
