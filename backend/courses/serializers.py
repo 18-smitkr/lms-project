@@ -25,6 +25,9 @@ class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = '__all__'
+        extra_kwargs = {
+            'module': {'required': False}
+        }
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -38,6 +41,9 @@ class ModuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Module
         fields = '__all__'
+
+        # Course will be supplied from the URL/view
+        read_only_fields = ['course']
 
 
 class CoursesSerializer(serializers.ModelSerializer):

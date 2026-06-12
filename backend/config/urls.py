@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import include, path
 from courses import urls as courses_urls
 from accounts import urls as accounts_urls
+from payments import urls as payments_urls
+from progress import urls as progress_urls 
 # JWT Authentication Views--> for token generation and refresh
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -28,7 +30,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # LMS API Routes
+    # Including courses app URLs under the /api/ path, which will route requests to the views defined in the courses app's urls.py file, allowing for modular organization of API endpoints related to course management and interactions
     path('api/', include('courses.urls')),
+    # payments app URLs are included under the /api/ path, which will route requests to the views defined in the payments app's urls.py file, allowing for modular organization of API endpoints related to payment processing and management
     path('api/', include('payments.urls')),
     
     path('api/auth/', include('accounts.urls')),
@@ -48,4 +52,6 @@ urlpatterns = [
         # Naming the URL for reverse lookups, making it easier to reference this endpoint in tests and frontend code when implementing token refresh logic
         name='token_refresh'
     ),
+    # Including progress app URLs under the /api/progress/ path, which will route requests to the views defined in the progress app's urls.py file, allowing for modular organization of API endpoints related to user progress tracking
+    path('api/progress/', include('progress.urls')),
 ]

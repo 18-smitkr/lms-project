@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import Progress
 
-# Register your models here.
+# Register Progress model in Django Admin
+admin.site.register(Progress)
