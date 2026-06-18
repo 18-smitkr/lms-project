@@ -26,11 +26,21 @@ def student_dashboard(request):
         student=request.user,
         status='success'
     ).count()
+    
+        # Total money spent by student
+    total_amount_spent = sum(
+        payment.amount
+        for payment in Payment.objects.filter(
+            student=request.user,
+            status='success'
+        )
+    )
 
     return Response({
         "total_courses": total_courses,
         "completed_lessons": completed_lessons,
-        "total_payments": total_payments
+        "total_payments": total_payments,
+        "total_amount_spent": total_amount_spent
     })
     
 from courses.models import Course
@@ -42,6 +52,16 @@ from payments.models import Payment
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def instructor_dashboard(request):
+
+    # Security Check
+    # Only instructors can access this dashboard
+    if request.user.role != 'instructor':
+        return Response(
+            {
+                "error": "Only instructors can access this dashboard"
+            },
+            status=403
+        )
 
     courses = Course.objects.filter(
         instructor=request.user
@@ -60,7 +80,9 @@ def instructor_dashboard(request):
     total_students = Payment.objects.filter(
         course__in=courses,
         status='success'
-    ).count()
+    ).values(
+        'student'
+    ).distinct().count()
 
     total_revenue = sum(
         payment.amount
@@ -69,11 +91,36 @@ def instructor_dashboard(request):
             status='success'
         )
     )
+    
+        # Average revenue generated per student
+    average_revenue = 0
+
+    if total_students > 0:
+        average_revenue = (
+            total_revenue / total_students
+        )
+
+    # Latest 5 courses created by instructor
+    recent_courses = Course.objects.filter(
+        instructor=request.user
+    ).order_by(
+        '-created_at'
+    )[:5]
 
     return Response({
-        "total_courses": total_courses,
-        "total_modules": total_modules,
-        "total_lessons": total_lessons,
-        "total_students": total_students,
-        "total_revenue": total_revenue
-    })    
+    "total_courses": total_courses,
+    "total_modules": total_modules,
+    "total_lessons": total_lessons,
+    "total_students": total_students,
+    "total_revenue": total_revenue,
+
+    "average_revenue": round(
+        average_revenue,
+        2
+    ),
+
+    "recent_courses": [
+        course.title
+        for course in recent_courses
+    ]
+})
