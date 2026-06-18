@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'payments',
     'progress',
     'notification',
+    'dashboard',
 ]
 
 MIDDLEWARE = [
@@ -130,4 +131,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+
+# Razorpay Configuration
+# Razorpay Configuration
+
+RAZORPAY_KEY_ID = "rzp_test_T2cJpsfjtSyMY7"
+
+RAZORPAY_KEY_SECRET = "XBrfaTeeiecxGv5nLcIvBcp4"
 

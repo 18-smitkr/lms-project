@@ -32,8 +32,8 @@ urlpatterns = [
     # LMS API Routes
     # Including courses app URLs under the /api/ path, which will route requests to the views defined in the courses app's urls.py file, allowing for modular organization of API endpoints related to course management and interactions
     path('api/', include('courses.urls')),
-    # payments app URLs are included under the /api/ path, which will route requests to the views defined in the payments app's urls.py file, allowing for modular organization of API endpoints related to payment processing and management
-    path('api/', include('payments.urls')),
+    # payments app URLs are included under the /api/payments/ path, which will route requests to the views defined in the payments app's urls.py file, allowing for modular organization of API endpoints related to payment processing and management
+    path('api/payments/', include('payments.urls')),
     
     path('api/auth/', include('accounts.urls')),
     # JWT Authentication Endpoints
@@ -54,4 +54,6 @@ urlpatterns = [
     ),
     # Including progress app URLs under the /api/progress/ path, which will route requests to the views defined in the progress app's urls.py file, allowing for modular organization of API endpoints related to user progress tracking
     path('api/progress/', include('progress.urls')),
+    # Including dashboard app URLs under the /api/dashboard/ path, which will route requests to the views defined in the dashboard app's urls.py file, allowing for modular organization of API endpoints related to user dashboards and analytics
+    path('api/dashboard/',include('dashboard.urls')),
 ]

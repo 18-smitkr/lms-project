@@ -47,3 +47,130 @@ def payment_history(request):
     )
 
     return Response(serializer.data)
+
+
+
+import razorpay
+from django.conf import settings
+from django.shortcuts import get_object_or_404
+
+# Create Razorpay Order
+# Purpose:
+# - Generates order_id
+# - Frontend uses it to open Razorpay Checkout
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_payment_order(
+    request,
+    course_id
+):
+
+    course = get_object_or_404(
+        Course,
+        id=course_id
+    )
+
+    client = razorpay.Client(
+        auth=(
+            settings.RAZORPAY_KEY_ID,
+            settings.RAZORPAY_KEY_SECRET
+        )
+    )
+
+    order_data = {
+        "amount": int(
+            course.price * 100
+        ),
+        "currency": "INR",
+        "payment_capture": 1
+    }
+
+    order = client.order.create(
+        data=order_data
+    )
+
+    return Response({
+        "order_id": order["id"],
+        "amount": order["amount"],
+        "currency": order["currency"]
+    })
+
+
+
+# Verify Payment
+# Purpose:
+# - Verifies payment signature sent by Razorpay
+# - If valid, creates Payment record and enrolls student in course
+# - If invalid, returns error response
+from django.conf import settings
+import razorpay
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def verify_payment(request):
+    razorpay_order_id = request.data.get(
+        "razorpay_order_id"
+    )
+    razorpay_payment_id = request.data.get(
+        "razorpay_payment_id"
+    )
+    razorpay_signature = request.data.get(
+        "razorpay_signature"
+    )
+
+    course_id = request.data.get(
+        "course_id"
+    )
+
+    client = razorpay.Client(
+        auth=(
+            settings.RAZORPAY_KEY_ID,
+            settings.RAZORPAY_KEY_SECRET
+        )
+    )
+
+    try:
+
+        client.utility.verify_payment_signature({
+            "razorpay_order_id":
+                razorpay_order_id,
+            "razorpay_payment_id":
+                razorpay_payment_id,
+            "razorpay_signature":
+                razorpay_signature
+        })
+
+        course = Course.objects.get(
+            id=course_id
+        )
+
+        payment = Payment.objects.create(
+            student=request.user,
+            course=course,
+            amount=course.price,
+            status="success"
+        )
+
+        Enrollment.objects.get_or_create(
+            student=request.user,
+            course=course
+        )
+
+        serializer = PaymentSerializer(
+            payment
+        )
+
+        return Response({
+            "message":
+                "Payment Verified",
+            "payment":
+                serializer.data
+        })
+
+    except:
+
+        return Response({
+            "message":
+                "Payment Verification Failed"
+        }, status=400)
