@@ -46,7 +46,6 @@ def student_dashboard(request):
 from courses.models import Course
 from courses.models import Module
 from courses.models import Lesson
-from payments.models import Payment
 
 
 @api_view(['GET'])

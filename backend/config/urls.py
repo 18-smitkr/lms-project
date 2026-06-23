@@ -56,4 +56,7 @@ urlpatterns = [
     path('api/progress/', include('progress.urls')),
     # Including dashboard app URLs under the /api/dashboard/ path, which will route requests to the views defined in the dashboard app's urls.py file, allowing for modular organization of API endpoints related to user dashboards and analytics
     path('api/dashboard/',include('dashboard.urls')),
+    
+    # Including reviews app URLs under the /api/reviews/ path, which will route requests to the views defined in the reviews app's urls.py file, allowing for modular organization of API endpoints related to course reviews and feedback
+    path('api/reviews/',include('reviews.urls')),
 ]

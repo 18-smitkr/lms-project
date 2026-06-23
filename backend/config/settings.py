@@ -45,9 +45,12 @@ INSTALLED_APPS = [
     'progress',
     'notification',
     'dashboard',
+    'reviews',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -138,4 +141,9 @@ STATIC_URL = 'static/'
 RAZORPAY_KEY_ID = "rzp_test_T2cJpsfjtSyMY7"
 
 RAZORPAY_KEY_SECRET = "XBrfaTeeiecxGv5nLcIvBcp4"
+
+# this setting allows cross-origin requests from the specified origins, which is useful for enabling frontend applications hosted on different domains or ports to interact with the backend API without running into CORS issues.
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
 
