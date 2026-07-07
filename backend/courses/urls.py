@@ -20,6 +20,7 @@ from .views import (
     update_lesson,
     delete_lesson,
     lesson_detail,
+    website_stats,
 )
 
 urlpatterns = [
@@ -42,4 +43,5 @@ urlpatterns = [
     path('delete-lesson/<int:lesson_id>/',delete_lesson,name='delete_lesson'),
     path('lesson-detail/<int:lesson_id>/',lesson_detail,name='lesson_detail'),
     path('course-modules/<int:course_id>/',course_modules,name='course_modules'),
+    path("stats/", website_stats)
 ]
