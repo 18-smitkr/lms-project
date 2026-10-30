@@ -87,7 +87,7 @@ const handleNavigation = (item) => {
 
   return (
     <aside
-      className="fixed left-4 top-4 bottom-4 w-64 z-50 flex flex-col rounded-3xl glass-ultra overflow-hidden"
+     className="hidden md:flex fixed left-4 top-4 bottom-4 w-64 z-50 flex-col rounded-3xl glass-ultra overflow-hidden"
       style={{
         boxShadow:
           "0 0 0 1px rgba(255,255,255,0.065), 0 32px 64px rgba(0,0,0,0.6)",
@@ -164,7 +164,9 @@ const handleNavigation = (item) => {
           const Icon = item.icon;
 
           const isActive =
-          location.pathname === item.path ||
+          item.path === "/dashboard"
+          ? location.pathname === "/dashboard"
+          : location.pathname === item.path ||
           location.pathname.startsWith(item.path + "/");
 
           return (

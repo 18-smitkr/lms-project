@@ -7,24 +7,39 @@ import RecentActivity from "../components/student/RecentActivity";
 
 function StudentDashboard() {
   return (
-    <div className="min-h-screen bg-[#09090F] flex text-white">
+    <div className="min-h-screen w-full bg-[#09090F] text-white flex">
+
+      {/* Sidebar */}
       <Sidebar />
 
-      <main className="flex-1 overflow-y-auto">
+      {/* Main Content */}
+      <main className="flex-1 min-w-0 md:ml-72">
+
+        {/* Top Navigation */}
         <Topbar />
 
-        <div className="px-8 py-8 space-y-8">
+        {/* Dashboard Content */}
+        <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 space-y-8">
+
+          {/* Statistics */}
           <DashboardCard />
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2">
+          {/* Learning Progress and Activity */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+            <div className="min-w-0 xl:col-span-2">
               <ContinueLearning />
             </div>
 
-            <RecentActivity />
+            <div className="min-w-0">
+              <RecentActivity />
+            </div>
+
           </div>
 
+          {/* Course Recommendations */}
           <RecommendedCourses />
+
         </div>
       </main>
     </div>
