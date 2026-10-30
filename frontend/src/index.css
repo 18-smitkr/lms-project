@@ -1,0 +1,22 @@
+@import "tailwindcss";
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+@keyframes blinkCursor {
+  0%, 50% {
+    opacity: 1;
+  }
+  50.01%, 100% {
+    opacity: 0;
+  }
+}
+
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: white;
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: blinkCursor 1s infinite;
+}
