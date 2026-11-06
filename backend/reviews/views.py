@@ -27,6 +27,9 @@ def create_review(
         id=course_id
     )
 
+    if request.user.role != 'student':
+        return Response({"error": "Only students can review courses."}, status=403)
+
     # Security Check
     # Only enrolled students can review
 

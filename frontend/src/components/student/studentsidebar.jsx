@@ -1,327 +1,213 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-
 import {
-  LayoutDashboard,
+  Bell,
   BookOpen,
-  Heart,
-  Award,
-  TrendingUp,
-  Calendar,
-  User,
-  Settings,
-  LogOut,
-  Zap,
+  BookOpenCheck,
+  ChartNoAxesCombined,
   ChevronRight,
+  Heart,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  TrendingUp,
+  User,
+  X,
 } from "lucide-react";
+import Brand from "../Brand";
 
 const navItems = [
-  {
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    path: "/dashboard",
-    badge: null,
-  },
-  {
-    icon: BookOpen,
-    label: "My Courses",
-    path: "/dashboard/my-courses",
-    badge: "12",
-  },
-  {
-    icon: Heart,
-    label: "Wishlist",
-    path: "/dashboard/wishlist",
-    badge: "4",
-  },
-  {
-    icon: Award,
-    label: "Certificates",
-    path: "/dashboard/certificates",
-    badge: null,
-  },
-  {
-    icon: TrendingUp,
-    label: "Progress",
-    path: "/dashboard/progress",
-    badge: null,
-  },
-  {
-    icon: Calendar,
-    label: "Schedule",
-    path: "/dashboard/schedule",
-    badge: "2",
-  },
-  {
-    icon: User,
-    label: "Profile",
-    path: "/dashboard/profile",
-    badge: null,
-  },
-  {
-    icon: Settings,
-    label: "Settings",
-    path: "/dashboard/settings",
-    badge: null,
-  },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
+  { icon: ChartNoAxesCombined, label: "My Progress", path: "/dashboard/progress" },
+  { icon: BookOpen, label: "My Courses", path: "/dashboard/my-courses" },
+  { icon: Heart, label: "Wishlist", path: "/dashboard/wishlist" },
+  { icon: TrendingUp, label: "Learning History", path: "/dashboard/history" },
+  { icon: Bell, label: "Notifications", path: "/dashboard/notifications" },
+  { icon: User, label: "Profile", path: "/dashboard/profile" },
+  { icon: Settings, label: "Settings", path: "/dashboard/settings" },
 ];
 
-function Sidebar() {
- const navigate = useNavigate();
- const location = useLocation();
-
+function Sidebar({ isOpen = false, onClose = () => {} }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
 
-  // const [active, setActive] = useState("Dashboard");
+  useEffect(() => {
+    if (!isOpen) return undefined;
 
-const handleNavigation = (item) => {
-    navigate(item.path);
-};
+    const bodyOverflow = document.body.style.overflow;
+    const documentOverflow = document.documentElement.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") onClose();
+    };
+    const closeOnDesktop = (event) => {
+      if (event.matches) onClose();
+    };
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    document.addEventListener("keydown", closeOnEscape);
+    desktopQuery.addEventListener("change", closeOnDesktop);
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = documentOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+      desktopQuery.removeEventListener("change", closeOnDesktop);
+    };
+  }, [isOpen, onClose]);
+
+  const navigateTo = (path) => {
+    navigate(path);
+    onClose();
+  };
 
   const handleLogout = () => {
     logout();
-
-    navigate("/login");
+    onClose();
+    navigate("/login", { replace: true });
   };
 
   return (
-    <aside
-     className="hidden md:flex fixed left-4 top-4 bottom-4 w-64 z-50 flex-col rounded-3xl glass-ultra overflow-hidden"
-      style={{
-        boxShadow:
-          "0 0 0 1px rgba(255,255,255,0.065), 0 32px 64px rgba(0,0,0,0.6)",
-      }}
-    >
-      {/* Ambient blobs */}
-
-      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-3xl">
-
-        <div
-          className="absolute -top-20 -left-10 w-48 h-48 rounded-full opacity-20 animate-float-slow"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(147,51,234,0.5), transparent 70%)",
-          }}
+    <>
+      {isOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation menu"
+          className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm md:hidden"
+          onClick={onClose}
         />
+      )}
 
-        <div
-          className="absolute bottom-20 -right-12 w-36 h-36 rounded-full opacity-15 animate-float-medium"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(249,115,22,0.4), transparent 70%)",
-          }}
-        />
-
-      </div>
-
-      {/* Logo */}
-
-      <div className="relative px-5 pt-6 pb-5">
-
-        <div className="flex items-center gap-3">
-
-          <div
-            className="relative w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-            style={{
-              background:
-                "linear-gradient(135deg,#9333EA,#7C3AED)",
-              boxShadow:
-                "0 0 20px rgba(147,51,234,.6),0 4px 12px rgba(0,0,0,.4)",
-            }}
+      <aside
+        aria-label="Student navigation"
+        aria-modal={isOpen ? "true" : undefined}
+        id="student-sidebar"
+        role={isOpen ? "dialog" : undefined}
+        className={`student-sidebar fixed left-0 top-0 bottom-0 z-50 flex w-72 max-w-[90vw] flex-col overflow-x-hidden overflow-y-auto overscroll-contain border-r border-[#E7E7E7] bg-[#F0F0F0] shadow-xl transition-transform duration-300 ease-out md:left-4 md:top-4 md:bottom-4 md:max-w-none md:rounded-xl md:w-20 lg:w-64 ${
+          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)] md:translate-x-0"
+        }`}
+      >
+        <div className="relative flex shrink-0 items-center justify-between px-5 pb-5 pt-6 md:justify-center md:px-0 lg:justify-start lg:px-5">
+          <div className="md:hidden lg:block">
+            <Brand to="/dashboard" portal="Student portal" />
+          </div>
+          <div className="hidden md:block lg:hidden" aria-label="Learnova">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#FE580D] text-white">
+              <BookOpenCheck size={20} aria-hidden="true" />
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close navigation menu"
+            className="rounded-lg p-2 text-[#737373] transition hover:bg-black/5 hover:text-[#171717] md:hidden"
           >
-            <Zap
-              size={18}
-              className="text-white"
-            />
-          </div>
-
-          <div>
-
-            <div className="text-[20px] font-black tracking-tight text-gradient-purple">
-              Learnova
-            </div>
-
-            <div className="text-[10px] text-white/25 font-medium tracking-[0.12em] uppercase mt-0.5">
-              Student Portal
-            </div>
-
-          </div>
-
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
 
-      </div>
+        <div className="relative mx-5 shrink-0 border-t border-black/10 md:mx-3 lg:mx-5" />
 
-      <div className="mx-5 divider" />
+        <nav
+          className="sidebar-nav relative flex shrink-0 flex-col gap-1 px-3 py-4"
+          aria-label="Student navigation links"
+        >
+          {navItems.map(({ icon: Icon, label, path }) => {
+            const isActive = location.pathname === path;
 
-      <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
-
-        <p className="text-[10px] font-semibold text-white/20 tracking-[0.14em] uppercase px-3 mb-3">
-          Navigation
-        </p>
-
-        {navItems.map((item) => {
-          const Icon = item.icon;
-
-          const isActive =
-          item.path === "/dashboard"
-          ? location.pathname === "/dashboard"
-          : location.pathname === item.path ||
-          location.pathname.startsWith(item.path + "/");
-
-          return (
-            <button
-              key={item.label}
-              onClick={() => handleNavigation(item)}
-              className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-[13.5px] font-medium transition-all duration-200 border cursor-pointer ${
-                isActive
-                  ? "nav-active text-white"
-                  : "text-white/40 border-transparent hover:bg-white/4 hover:text-white/75 hover:border-white/6"
-              }`}
-            >
-              <div
-                className={`${
+            return (
+              <button
+                key={path}
+                type="button"
+                onClick={() => navigateTo(path)}
+                aria-label={label}
+                aria-current={isActive ? "page" : undefined}
+                title={label}
+                className={`group flex w-full shrink-0 items-center gap-3 rounded-xl border px-3 py-[11px] text-left text-sm font-medium transition-colors duration-200 md:justify-center md:px-0 lg:justify-start lg:px-3 ${
                   isActive
-                    ? "text-purple-400"
-                    : "text-white/30 group-hover:text-white/60"
+                    ? "border-transparent border-l-2 border-l-[#FE580D] bg-[#111111] text-white"
+                    : "border-transparent text-[#646464] hover:bg-black/5 hover:text-[#171717]"
                 }`}
               >
-                <Icon size={16} />
-              </div>
-
-              <span className="flex-1 text-left">
-                {item.label}
-              </span>
-
-              {item.badge && !isActive && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-white/[0.07] text-white/30">
-                  {item.badge}
-                </span>
-              )}
-
-              {isActive && (
-                <ChevronRight
-                  size={12}
-                  className="text-purple-400/60"
+                <Icon
+                  size={18}
+                  aria-hidden="true"
+                  className={`shrink-0 transition-colors ${
+                    isActive
+                      ? "text-white"
+                      : "text-[#777777] group-hover:text-[#171717]"
+                  }`}
                 />
-              )}
+                <span className="min-w-0 flex-1 truncate md:hidden lg:block">
+                  {label}
+                </span>
+                {isActive && (
+                  <ChevronRight
+                    size={15}
+                    aria-hidden="true"
+                    className="shrink-0 text-white/80 md:hidden lg:block"
+                  />
+                )}
+              </button>
+            );
+          })}
 
+          <div className="my-2 shrink-0 border-t border-black/10 md:mx-1 lg:mx-2" />
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="group flex w-full shrink-0 items-center gap-3 rounded-xl border border-transparent px-3 py-[11px] text-left text-sm font-medium text-[#646464] transition-colors duration-200 hover:bg-red-500/10 hover:text-red-600 md:justify-center md:px-0 lg:justify-start lg:px-3"
+            title="Logout"
+          >
+            <LogOut
+              size={18}
+              aria-hidden="true"
+              className="shrink-0 transition-colors group-hover:text-red-300"
+            />
+            <span className="md:hidden lg:block">Logout</span>
+          </button>
+        </nav>
+
+        <div className="student-profile-footer relative shrink-0 p-3 pb-4">
+          <div className="student-profile flex min-w-0 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 transition-colors hover:bg-white/[0.07] md:justify-center md:border-transparent md:bg-transparent md:p-0 lg:justify-start lg:border-white/[0.08] lg:bg-white/[0.035] lg:p-2.5">
+            <button
+              type="button"
+              onClick={() => navigateTo("/dashboard/profile")}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#65C9BE] md:flex-none lg:flex-1"
+              aria-label={`Open profile for ${user?.username || "student"}`}
+            >
+              <span
+                aria-hidden="true"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FE580D] text-sm font-bold text-white"
+              >
+                {(user?.username || "U").slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1 md:hidden lg:block">
+                <span className="student-profile-name block truncate text-[13px] font-semibold leading-tight">
+                  {user?.username || "Student"}
+                </span>
+                <span className="student-profile-role mt-1 block truncate text-[11px] capitalize">
+                  {user?.role || "student"}
+                </span>
+              </span>
             </button>
-          );
-        })}
-
-        <div className="pt-2 pb-1">
-          <div className="mx-3 divider" />
+            <button
+              type="button"
+              onClick={() => navigateTo("/dashboard/settings")}
+              aria-label="Open settings"
+              title="Settings"
+              className="student-profile-settings shrink-0 rounded-lg p-2 transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FE580D] md:hidden lg:block"
+            >
+              <Settings size={16} aria-hidden="true" />
+            </button>
+          </div>
         </div>
-
-        <button
-          onClick={handleLogout}
-          className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-[13.5px] font-medium text-white/30 border border-transparent hover:bg-red-500/6 hover:text-red-400/80 hover:border-red-500/12 transition-all duration-200 cursor-pointer"
-        >
-          <LogOut size={16} />
-
-          Logout
-
-        </button>
-
-      </nav>
-    
-          {/* Bottom Section */}
-
-      <div className="px-3 pb-4 space-y-3">
-
-        {/* XP Card */}
-
-        <div
-          className="px-4 py-3.5 rounded-2xl"
-          style={{
-            background: "rgba(147,51,234,0.08)",
-            border: "1px solid rgba(147,51,234,0.18)",
-          }}
-        >
-
-          <div className="flex items-center justify-between mb-2">
-
-            <span className="text-[11px] font-semibold text-white/50">
-              Level 8 · XP
-            </span>
-
-            <span className="text-[11px] font-bold text-purple-400">
-              780 / 1000
-            </span>
-
-          </div>
-
-          <div className="progress-track h-1.5">
-
-            <div
-              className="progress-fill-purple"
-              style={{ width: "78%" }}
-            />
-
-          </div>
-
-          <p className="text-[10px] text-white/25 mt-1.5">
-            220 XP to Level 9
-          </p>
-
-        </div>
-
-        {/* User Card */}
-
-        <div
-          className="flex items-center gap-3 px-3.5 py-3 rounded-2xl cursor-pointer transition-all duration-200 hover:bg-white/4"
-          style={{
-            border: "1px solid rgba(255,255,255,0.07)",
-          }}
-        >
-
-          <div className="relative shrink-0">
-
-            <img
-              src={`https://ui-avatars.com/api/?name=${
-                user?.username || "User"
-              }&background=7C3AED&color=fff&bold=true`}
-              alt={user?.username}
-              className="w-9 h-9 rounded-full object-cover"
-              style={{
-                boxShadow: "0 0 0 2px rgba(147,51,234,0.5)",
-              }}
-            />
-
-            <div
-              className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
-              style={{
-                background: "#22C55E",
-                borderColor: "#0D0D14",
-                boxShadow: "0 0 6px rgba(34,197,94,0.6)",
-              }}
-            />
-
-          </div>
-
-          <div className="flex-1 min-w-0">
-
-            <p className="text-[13px] font-semibold text-white/90 truncate leading-tight">
-              {user?.username || "Loading..."}
-            </p>
-
-            <p className="text-[11px] text-white/35 truncate capitalize">
-              {user?.role || ""}
-            </p>
-
-          </div>
-
-          <Settings
-            size={13}
-            className="text-white/20 shrink-0"
-          />
-
-        </div>
-
-      </div>
-
-    </aside>
+      </aside>
+    </>
   );
 }
 

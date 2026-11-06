@@ -1,10 +1,9 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, allowedRoles = [] }) {
   const { user, loading } = useAuth();
 
-  // Wait until AuthContext finishes checking the user
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090F] flex items-center justify-center">
@@ -13,9 +12,13 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  // If no authenticated user, redirect to login
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    const fallbackRoute = user.role === "instructor" ? "/instructor/dashboard" : "/dashboard";
+    return <Navigate to={fallbackRoute} replace />;
   }
 
   return children;

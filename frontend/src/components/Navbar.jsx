@@ -1,127 +1,93 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import icon from "../assets/icon.svg";
-import homeIcon from "../assets/home.png";
-import courseIcon from "../assets/course.png";
-import aboutIcon from "../assets/about.png";
-import contactIcon from "../assets/contact.png";
+import { ArrowRight, BookOpen, Menu, X } from "lucide-react";
+import Brand from "./Brand";
 
 function Navbar() {
-  const navItems = [
-    { to: "/", label: "Home", icon: homeIcon, end: true },
-    { to: "/courses", label: "Courses", icon: courseIcon },
-    { to: "/about", label: "About", icon: aboutIcon },
-    { to: "/contact", label: "Contact", icon: contactIcon },
-  ];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return undefined;
+
+    const updateScrollState = () => {
+      header.classList.toggle("navbar-scrolled", window.scrollY > 8);
+    };
+
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => window.removeEventListener("scroll", updateScrollState);
+  }, []);
+
+  const navLinks = (
+    <>
+      <NavLink
+        to="/"
+        end
+        onClick={() => setMenuOpen(false)}
+        className={({ isActive }) => `navbar-link ${isActive ? "navbar-link-active" : ""}`}
+      >
+        Home
+      </NavLink>
+      <NavLink
+        to="/courses"
+        onClick={() => setMenuOpen(false)}
+        className={({ isActive }) => `navbar-link ${isActive ? "navbar-link-active" : ""}`}
+      >
+        <BookOpen size={16} aria-hidden="true" />
+        Explore courses
+      </NavLink>
+    </>
+  );
 
   return (
-    <header className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-full px-6">
-      <nav className="max-w-7xl mx-auto flex items-center justify-between">
-
-        {/* Logo */}
-       <Link to="/" className="group flex items-center gap-4">
-
-  <h1
-    className="
-      text-4xl
-      font-black
-      tracking-tight
-      transition-all
-      duration-300
-      group-hover:scale-105
-    "
-  >
-
-    <span className="text-white">
-      Learn
-    </span>
-
-    <span
-      className="
-      bg-linear-to-r
-      from-purple-400
-      via-fuchsia-500
-      to-purple-600
-      bg-clip-text
-      text-transparent
-      "
+    <header
+      ref={headerRef}
+      data-hero-nav
+      className="learnova-navbar sticky top-0 z-50 border-b border-[#E7E7E7] bg-white/95 px-4 backdrop-blur transition-[box-shadow,background-color] duration-300 sm:px-6"
     >
-      ova
-    </span>
+      <nav className="mx-auto flex min-h-16 max-w-7xl items-center justify-between gap-3 sm:min-h-[76px]" aria-label="Main navigation">
+        <Brand />
 
-  </h1>
+        <div className="hidden items-center gap-1 md:flex">{navLinks}</div>
 
-</Link>
-
-        {/* Glass Menu */}
-        <div
-          className="
-            hidden lg:flex
-            items-center
-            gap-2
-            px-3
-            py-3
-            rounded-full
-            bg-white/10
-            backdrop-blur-2xl
-            border border-white/15
-            shadow-[0_8px_40px_rgba(255,255,255,0.08)]
-          "
-        >
-          {navItems.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? "bg-white/15 border border-white/20 text-white"
-                    : "text-gray-300 hover:text-white hover:bg-white/10"
-                }`
-              }
-            >
-              <img
-                src={item.icon}
-                alt={item.label}
-                className="w-5 h-5"
-              />
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </div>
-
-        {/* Right */}
-        <div className="flex items-center gap-5">
-
-          <NavLink
-            to="/login"
-            className="text-gray-300 hover:text-white font-medium transition"
-          >
+        <div className="hidden shrink-0 items-center gap-2 sm:gap-4 md:flex">
+          <Link to="/login" className="rounded-lg px-2 py-2 text-sm font-semibold text-[#7D7D7D] transition hover:text-[#C44808] sm:px-3">
             Login
-          </NavLink>
-
-          <Link
-            to="/register"
-            className="
-              px-8
-              py-4
-              rounded-full
-              bg-linear-to-r
-              from-orange-500
-              to-orange-400
-              text-white
-              font-semibold
-              hover:scale-105
-              transition
-              shadow-lg
-            "
-          >
-            Get Started →
           </Link>
-
+          <Link to="/register" className="inline-flex items-center gap-1.5 rounded-lg bg-[#FE580D] px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#E64E00] sm:px-5">
+            Get started <ArrowRight size={15} aria-hidden="true" />
+          </Link>
         </div>
 
+        <button
+          type="button"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[#E7E7E7] text-black transition hover:border-[#FE580D] hover:text-[#FE580D] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#FE580D] md:hidden"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+          aria-controls="learnova-mobile-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+        </button>
       </nav>
+
+      {menuOpen && (
+        <div id="learnova-mobile-navigation" className="border-t border-[#E7E7E7] bg-white px-1 pb-4 pt-3 md:hidden">
+          <div className="flex flex-col gap-1" onClick={() => setMenuOpen(false)}>
+            {navLinks}
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-[#E7E7E7] pt-3">
+              <Link to="/login" onClick={() => setMenuOpen(false)} className="rounded-lg border border-[#E7E7E7] px-4 py-2.5 text-center text-sm font-semibold text-black">
+                Login
+              </Link>
+              <Link to="/register" onClick={() => setMenuOpen(false)} className="rounded-lg bg-[#FE580D] px-4 py-2.5 text-center text-sm font-semibold text-white">
+                Get started
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

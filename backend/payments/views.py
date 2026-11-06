@@ -1,176 +1,257 @@
-from django.shortcuts import render
+import uuid
+
+import razorpay
+from django.conf import settings
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+from courses.models import Course, Enrollment
 from .models import Payment
 from .serializers import PaymentSerializer
-from courses.models import Course, Enrollment
 
-# Payment processing view for buying a course. This view is protected by authentication, ensuring that only logged-in users can make purchases. It retrieves the specified course, creates a payment record, enrolls the user in the course, and returns the payment details in the response.
-@api_view(['POST'])
-# Using the IsAuthenticated permission class to ensure that only authenticated users can access this view, which is crucial for security when handling payments and enrollments
-@permission_classes([IsAuthenticated])
-def buy_course(request, course_id):
-    # Retrieving the course object based on the provided course_id. This will raise a 404 error if the course does not exist, which is handled by Django's default behavior when using get() without try-except.
-    course = Course.objects.get(id=course_id)
-    # Creating a new Payment object with the current user as the student, the specified course, the course price as the amount, and a default status of 'success'. In a real application, you would typically integrate with a payment gateway and set the status based on the payment outcome.
-    payment = Payment.objects.create(
-        student=request.user,
-        # Linking the payment to the course being purchased, which allows for easy tracking of which courses have been paid for by which students
-        course=course,
-        # Setting the payment amount to the price of the course, which ensures that the correct amount is charged for each course based on its defined price in the Course model
-        amount=course.price,
-        # Setting the payment status to 'success' for demonstration purposes. In a production application, you would typically determine this status based on the response from the payment gateway after processing the payment.
-        status='success'
+
+def _client_or_none():
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        return None
+    return razorpay.Client(
+        auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET)
     )
-    # Using get_or_create to enroll the user in the course. This ensures that if the user is already enrolled, it won't create a duplicate enrollment record. The related_name 'enrollments' allows for easy reverse lookup from the User and Course models.
-    Enrollment.objects.get_or_create(
-        student=request.user,
-        course=course
-    )
-    # Serializing the payment object to return its details in the response. This allows the frontend to receive information about the payment, such as the amount, status, and associated course. The PaymentSerializer converts the Payment model instance into a JSON-friendly format that can be easily consumed by the
-    serializer = PaymentSerializer(payment)
 
-    return Response(serializer.data)
 
-# View to retrieve the payment history for the authenticated user. This view filters the Payment objects to only include those made by the current user, serializes the results, and returns them in the response. This allows users to see a history of their payments and associated courses.
+def _is_student(user):
+    return user.role == 'student'
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def payment_history(request):
-    payments = Payment.objects.filter(
-        student=request.user
-    )
+    payments = Payment.objects.filter(student=request.user).select_related('course')
+    return Response(PaymentSerializer(payments, many=True).data)
 
-    serializer = PaymentSerializer(
-        payments,
-        many=True
-    )
-
-    return Response(serializer.data)
-
-
-
-import razorpay
-from django.conf import settings
-from django.shortcuts import get_object_or_404
-
-# Create Razorpay Order
-# Purpose:
-# - Generates order_id
-# - Frontend uses it to open Razorpay Checkout
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def create_payment_order(
-    request,
-    course_id
-):
-
-    course = get_object_or_404(
-        Course,
-        id=course_id
-    )
-
-    client = razorpay.Client(
-        auth=(
-            settings.RAZORPAY_KEY_ID,
-            settings.RAZORPAY_KEY_SECRET
+def create_payment_order(request, course_id):
+    if not _is_student(request.user):
+        return Response(
+            {"error": "Only students can purchase courses."},
+            status=status.HTTP_403_FORBIDDEN,
         )
+
+    course = get_object_or_404(Course, id=course_id)
+    if course.price <= 0:
+        return Response(
+            {"error": "Free courses do not require payment."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if Enrollment.objects.filter(student=request.user, course=course).exists():
+        return Response(
+            {"error": "You are already enrolled in this course."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    previous_order = Payment.objects.filter(
+        student=request.user,
+        course=course,
+        status=Payment.PENDING,
+        gateway_order_id__isnull=False,
+    ).order_by('-created_at').first()
+    if previous_order:
+        return Response({
+            "key_id": settings.RAZORPAY_KEY_ID,
+            "order_id": previous_order.gateway_order_id,
+            "amount": int(previous_order.amount * 100),
+            "currency": "INR",
+        })
+
+    client = _client_or_none()
+    if client is None:
+        return Response(
+            {"error": "Razorpay is not configured on this server."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    receipt = f"learnova-{request.user.pk}-{course.pk}-{uuid.uuid4().hex[:12]}"
+    try:
+        order = client.order.create(data={
+            "amount": int(course.price * 100),
+            "currency": "INR",
+            "payment_capture": 1,
+            "receipt": receipt,
+            "notes": {
+                "student_id": str(request.user.pk),
+                "course_id": str(course.pk),
+            },
+        })
+    except (razorpay.errors.BadRequestError, razorpay.errors.GatewayError, razorpay.errors.ServerError):
+        return Response(
+            {"error": "Razorpay could not create the payment order."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+
+    Payment.objects.create(
+        student=request.user,
+        course=course,
+        amount=course.price,
+        status=Payment.PENDING,
+        gateway_order_id=order['id'],
     )
-
-    order_data = {
-        "amount": int(
-            course.price * 100
-        ),
-        "currency": "INR",
-        "payment_capture": 1
-    }
-
-    order = client.order.create(
-        data=order_data
-    )
-
     return Response({
-        "order_id": order["id"],
-        "amount": order["amount"],
-        "currency": order["currency"]
-    })
+        "key_id": settings.RAZORPAY_KEY_ID,
+        "order_id": order['id'],
+        "amount": order['amount'],
+        "currency": order['currency'],
+    }, status=status.HTTP_201_CREATED)
 
-
-
-# Verify Payment
-# Purpose:
-# - Verifies payment signature sent by Razorpay
-# - If valid, creates Payment record and enrolls student in course
-# - If invalid, returns error response
-from django.conf import settings
-import razorpay
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def verify_payment(request):
-    razorpay_order_id = request.data.get(
-        "razorpay_order_id"
-    )
-    razorpay_payment_id = request.data.get(
-        "razorpay_payment_id"
-    )
-    razorpay_signature = request.data.get(
-        "razorpay_signature"
-    )
-
-    course_id = request.data.get(
-        "course_id"
-    )
-
-    client = razorpay.Client(
-        auth=(
-            settings.RAZORPAY_KEY_ID,
-            settings.RAZORPAY_KEY_SECRET
+    if not _is_student(request.user):
+        return Response(
+            {"error": "Only students can complete course purchases."},
+            status=status.HTTP_403_FORBIDDEN,
         )
-    )
+
+    order_id = request.data.get('razorpay_order_id')
+    payment_id = request.data.get('razorpay_payment_id')
+    signature = request.data.get('razorpay_signature')
+    course_id = request.data.get('course_id')
+    if not all(isinstance(value, str) and value.strip() for value in (order_id, payment_id, signature)):
+        return Response(
+            {"error": "Payment order, payment ID, and signature are required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        course_id = int(course_id)
+    except (TypeError, ValueError):
+        return Response({"error": "A valid course ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    client = _client_or_none()
+    if client is None:
+        return Response(
+            {"error": "Razorpay is not configured on this server."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
     try:
+        payment = Payment.objects.select_related('course').get(
+            gateway_order_id=order_id,
+            student=request.user,
+            course_id=course_id,
+        )
+    except Payment.DoesNotExist:
+        return Response(
+            {"error": "Payment order does not belong to this student and course."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
 
+    if payment.status == Payment.SUCCESS:
+        if payment.transaction_id == payment_id:
+            return Response({
+                "message": "Payment already verified.",
+                "payment": PaymentSerializer(payment).data,
+            })
+        return Response(
+            {"error": "This payment order has already been completed."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    if payment.status != Payment.PENDING:
+        return Response(
+            {"error": "This payment order is no longer pending."},
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    try:
         client.utility.verify_payment_signature({
-            "razorpay_order_id":
-                razorpay_order_id,
-            "razorpay_payment_id":
-                razorpay_payment_id,
-            "razorpay_signature":
-                razorpay_signature
+            "razorpay_order_id": order_id,
+            "razorpay_payment_id": payment_id,
+            "razorpay_signature": signature,
         })
-
-        course = Course.objects.get(
-            id=course_id
+        gateway_payment = client.payment.fetch(payment_id)
+    except razorpay.errors.SignatureVerificationError:
+        return Response(
+            {"error": "Payment signature verification failed."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except (razorpay.errors.BadRequestError, razorpay.errors.GatewayError, razorpay.errors.ServerError):
+        return Response(
+            {"error": "Unable to verify payment with Razorpay right now."},
+            status=status.HTTP_502_BAD_GATEWAY,
         )
 
-        payment = Payment.objects.create(
-            student=request.user,
-            course=course,
-            amount=course.price,
-            status="success"
+    if (
+        gateway_payment.get('order_id') != order_id
+        or gateway_payment.get('status') != 'captured'
+        or gateway_payment.get('amount') != int(payment.amount * 100)
+        or gateway_payment.get('currency') != 'INR'
+    ):
+        return Response(
+            {"error": "Razorpay has not confirmed a captured payment for this order."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
-        Enrollment.objects.get_or_create(
-            student=request.user,
-            course=course
+    with transaction.atomic():
+        payment = Payment.objects.select_for_update().get(pk=payment.pk)
+        if payment.status == Payment.SUCCESS:
+            if payment.transaction_id == payment_id:
+                return Response({
+                    "message": "Payment already verified.",
+                    "payment": PaymentSerializer(payment).data,
+                })
+            return Response(
+                {"error": "This payment order has already been completed."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        payment.transaction_id = payment_id
+        payment.status = Payment.SUCCESS
+        payment.save(update_fields=['transaction_id', 'status', 'updated_at'])
+        Enrollment.objects.get_or_create(student=request.user, course=payment.course)
+
+    return Response({
+        "message": "Payment verified.",
+        "payment": PaymentSerializer(payment).data,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def payment_failed(request):
+    order_id = request.data.get('razorpay_order_id')
+    payment_id = request.data.get('razorpay_payment_id')
+    if not all(isinstance(value, str) and value.strip() for value in (order_id, payment_id)):
+        return Response(
+            {"error": "A valid Razorpay order ID and payment ID are required."},
+            status=status.HTTP_400_BAD_REQUEST,
         )
-
-        serializer = PaymentSerializer(
-            payment
+    client = _client_or_none()
+    if client is None:
+        return Response(
+            {"error": "Razorpay is not configured on this server."},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-
-        return Response({
-            "message":
-                "Payment Verified",
-            "payment":
-                serializer.data
-        })
-
-    except:
-
-        return Response({
-            "message":
-                "Payment Verification Failed"
-        }, status=400)
+    payment = get_object_or_404(
+        Payment,
+        gateway_order_id=order_id,
+        student=request.user,
+        status=Payment.PENDING,
+    )
+    try:
+        gateway_payment = client.payment.fetch(payment_id)
+    except (razorpay.errors.BadRequestError, razorpay.errors.GatewayError, razorpay.errors.ServerError):
+        return Response(
+            {"error": "Unable to verify the failed payment with Razorpay."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    if gateway_payment.get('order_id') != order_id or gateway_payment.get('status') != 'failed':
+        return Response(
+            {"error": "Razorpay has not confirmed that this payment failed."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    payment.status = Payment.FAILED
+    payment.save(update_fields=['status', 'updated_at'])
+    return Response({"message": "Payment marked as failed."})

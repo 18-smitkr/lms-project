@@ -25,7 +25,7 @@
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from .models import Course, Module, Lesson, Enrollment
+from .models import Course, Module, Lesson, Enrollment, Wishlist
 from .serializers import (
     CoursesSerializer,
     ModuleSerializer,
@@ -56,38 +56,76 @@ from .serializers import (
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
 
 # Create your views here.
+def _can_manage_course(user, course):
+    return user.is_authenticated and user.role == 'instructor' and course.instructor_id == user.id
+
+
+def _can_access_course_content(user, course):
+    if not user.is_authenticated:
+        return False
+    if _can_manage_course(user, course):
+        return True
+    return user.role == 'student' and Enrollment.objects.filter(
+        student=user,
+        course=course,
+    ).exists()
+
+
+def _accessible_modules(user):
+    if user.role == 'instructor':
+        return Module.objects.filter(course__instructor=user)
+    if user.role == 'student':
+        return Module.objects.filter(course__enrollments__student=user)
+    return Module.objects.none()
+
+
+def _accessible_lessons(user):
+    if user.role == 'instructor':
+        return Lesson.objects.filter(module__course__instructor=user)
+    if user.role == 'student':
+        return Lesson.objects.filter(module__course__enrollments__student=user)
+    return Lesson.objects.none()
+
+
 # @api_view(['GET']) is a decorator that specifies that this view will handle GET requests. It converts the function into a DRF API view.
 @api_view(['GET'])
 def courses_list(request):
     # Fetch all courses from the database
     courses = Course.objects.all()
     # Serialize the course data into JSON format
-    serializer = CoursesSerializer(courses, many=True)
+    serializer = CoursesSerializer(courses, many=True, context={'request': request})
     # Return the serialized data as a JSON response
     return Response(serializer.data)
 
 # this view will handle GET requests to list all modules. It fetches all Module objects, serializes them, and returns the data as a JSON response.
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def module_list(request):
-    modules = Module.objects.all()
-    serializer = ModuleSerializer(modules, many=True)
+    modules = _accessible_modules(request.user).distinct()
+    serializer = ModuleSerializer(modules, many=True, context={'request': request})
     return Response(serializer.data)
 
 # this view will handle GET requests to list all lessons. It fetches all Lesson objects, serializes them, and returns the data as a JSON response.
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def lesson_list(request):
-    lessons = Lesson.objects.all()
-    serializer = LessonSerializer(lessons, many=True)
+    lessons = _accessible_lessons(request.user).distinct()
+    serializer = LessonSerializer(lessons, many=True, context={'request': request})
     return Response(serializer.data)
 
 
 
 # this view will handle GET requests to list all enrollments. It fetches all Enrollment objects, serializes them, and returns the data as a JSON response.
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def enrollment_list(request):
-    enrollments = Enrollment.objects.all()
+    if request.user.role == 'instructor':
+        enrollments = Enrollment.objects.filter(course__instructor=request.user)
+    else:
+        enrollments = Enrollment.objects.filter(student=request.user)
     serializer = EnrollmentSerializer(
         enrollments,
         many=True
@@ -109,12 +147,35 @@ def enroll_course(request, course_id):
         id=course_id
     )
 
+    if request.user.role != 'student':
+        return Response({"error": "Only students can enroll in courses."}, status=403)
+
+    if course.price > 0:
+        from payments.models import Payment
+
+        if not Payment.objects.filter(
+            student=request.user,
+            course=course,
+            status=Payment.SUCCESS,
+        ).exists():
+            return Response(
+                {"error": "Payment is required before enrolling in this course."},
+                status=402,
+            )
+
     enrollment, created = Enrollment.objects.get_or_create(
         student=request.user,
         course=course
     )
 
     if created:
+        from notification.models import Notification
+
+        Notification.objects.create(
+            user=request.user,
+            title="Course enrollment confirmed",
+            message=f"You are enrolled in {course.title}.",
+        )
         return Response({
             "message": "Enrollment successful"
         })
@@ -128,6 +189,9 @@ from .serializers import MyCourseSerializer
 @permission_classes([IsAuthenticated])
 # This view will handle GET requests to list the courses the authenticated user is enrolled in. It filters enrollments by the current user, serializes the data, and returns it as a JSON response.
 def my_courses(request):
+    if request.user.role != 'student':
+        return Response({"error": "Only students can access enrolled courses."}, status=403)
+
     # Fetch enrollments for the authenticated user
     enrollments = Enrollment.objects.filter(
         student=request.user
@@ -150,7 +214,7 @@ def course_detail(request, course_id):
         id=course_id
     )
 
-    serializer = CoursesSerializer(course)
+    serializer = CoursesSerializer(course, context={'request': request})
 
     return Response(serializer.data)
 
@@ -222,7 +286,7 @@ def update_course(request, course_id):
         id=course_id
     )
 
-    if course.instructor != request.user:
+    if not _can_manage_course(request.user, course):
         return Response(
             {"error": "You can update only your courses"},
             status=status.HTTP_403_FORBIDDEN
@@ -257,7 +321,7 @@ def delete_course(request, course_id):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    if course.instructor != request.user:
+    if not _can_manage_course(request.user, course):
         return Response(
             {"error": "You can delete only your courses"},
             status=status.HTTP_403_FORBIDDEN
@@ -293,7 +357,7 @@ def create_module(request, course_id):
     # Security Check
     # Only the instructor who created the course
     # can add modules to it
-    if course.instructor != request.user:
+    if not _can_manage_course(request.user, course):
         return Response(
             {
                 "error": "Only course instructor can add modules"
@@ -337,13 +401,18 @@ def create_module(request, course_id):
 @api_view(['GET'])
 def course_modules(request, course_id):
 
+    course = get_object_or_404(Course, id=course_id)
+    if not _can_access_course_content(request.user, course):
+        return Response({"error": "Enroll in this course to access its curriculum."}, status=403)
+
     modules = Module.objects.filter(
-        course_id=course_id
+        course=course
     )
 
     serializer = ModuleSerializer(
         modules,
-        many=True
+        many=True,
+        context={'request': request},
     )
 
     return Response(serializer.data)
@@ -368,8 +437,12 @@ def module_detail(request, module_id):
         id=module_id
     )
 
+    if not _can_access_course_content(request.user, module.course):
+        return Response({"error": "Enroll in this course to access its curriculum."}, status=403)
+
     serializer = ModuleSerializer(
-        module
+        module,
+        context={'request': request},
     )
 
     return Response(
@@ -397,7 +470,7 @@ def update_module(request, module_id):
 
     # Ownership check
     # Only course creator can update module
-    if module.course.instructor != request.user:
+    if not _can_manage_course(request.user, module.course):
         return Response(
             {
                 "error": "You can update only your modules"
@@ -453,7 +526,7 @@ def delete_module(request, module_id):
     # Ownership check
     # Only instructor who owns the course
     # can delete the module
-    if module.course.instructor != request.user:
+    if not _can_manage_course(request.user, module.course):
         return Response(
             {
                 "error": "You can delete only your modules"
@@ -495,7 +568,7 @@ def create_lesson(request, module_id):
     )
 
     # Ownership check
-    if module.course.instructor != request.user:
+    if not _can_manage_course(request.user, module.course):
         return Response(
             {
                 "error": "Only instructor can add lessons"
@@ -532,13 +605,18 @@ def create_lesson(request, module_id):
 @api_view(['GET'])
 def module_lessons(request, module_id):
 
+    module = get_object_or_404(Module, id=module_id)
+    if not _can_access_course_content(request.user, module.course):
+        return Response({"error": "Enroll in this course to access its lessons."}, status=403)
+
     lessons = Lesson.objects.filter(
-        module_id=module_id
+        module=module
     )
 
     serializer = LessonSerializer(
         lessons,
-        many=True
+        many=True,
+        context={'request': request},
     )
 
     return Response(serializer.data)  
@@ -559,8 +637,12 @@ def lesson_detail(request, lesson_id):
         id=lesson_id
     )
 
+    if not _can_access_course_content(request.user, lesson.module.course):
+        return Response({"error": "Enroll in this course to access its lessons."}, status=403)
+
     serializer = LessonSerializer(
-        lesson
+        lesson,
+        context={'request': request},
     )
 
     return Response(
@@ -581,7 +663,7 @@ def update_lesson(request, lesson_id):
     )
 
     # Ownership check
-    if lesson.module.course.instructor != request.user:
+    if not _can_manage_course(request.user, lesson.module.course):
         return Response(
             {
                 "error": "You can update only your lessons"
@@ -618,7 +700,7 @@ def delete_lesson(request, lesson_id):
     )
 
     # Ownership check
-    if lesson.module.course.instructor != request.user:
+    if not _can_manage_course(request.user, lesson.module.course):
         return Response(
             {
                 "error": "You can delete only your lessons"
@@ -655,3 +737,67 @@ def website_stats(request):
         "courses": total_courses,
         "lessons": total_lessons,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_wishlist(request):
+    if request.user.role != 'student':
+        return Response({"error": "Only students have a wishlist."}, status=403)
+    items = Wishlist.objects.filter(student=request.user).select_related('course')
+    return Response([
+        {
+            "id": item.id,
+            "course_id": item.course_id,
+            "title": item.course.title,
+            "description": item.course.description,
+            "price": item.course.price,
+            "thumbnail_url": item.course.thumbnail_url,
+            "created_at": item.created_at,
+        }
+        for item in items
+    ])
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def wishlist_course(request, course_id):
+    if request.user.role != 'student':
+        return Response({"error": "Only students can manage a wishlist."}, status=403)
+    course = get_object_or_404(Course, id=course_id)
+    if request.method == 'POST':
+        item, created = Wishlist.objects.get_or_create(student=request.user, course=course)
+        return Response(
+            {"message": "Course added to wishlist.", "id": item.id},
+            status=201 if created else 200,
+        )
+    deleted, _ = Wishlist.objects.filter(student=request.user, course=course).delete()
+    if not deleted:
+        return Response({"error": "Course was not in your wishlist."}, status=404)
+    return Response({"message": "Course removed from wishlist."})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def course_students(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    if not _can_manage_course(request.user, course):
+        return Response({"error": "Only the course instructor can view enrolled students."}, status=403)
+    total_lessons = Lesson.objects.filter(module__course=course).count()
+    enrollments = Enrollment.objects.filter(course=course).select_related('student')
+    students = []
+    for enrollment in enrollments:
+        completed = enrollment.student.progress.filter(
+            lesson__module__course=course,
+            completed=True,
+        ).count()
+        students.append({
+            "id": enrollment.student_id,
+            "username": enrollment.student.username,
+            "email": enrollment.student.email,
+            "enrolled_at": enrollment.enrolled_at,
+            "completed_lessons": completed,
+            "total_lessons": total_lessons,
+            "completion_percentage": round(completed / total_lessons * 100, 2) if total_lessons else 0,
+        })
+    return Response(students)

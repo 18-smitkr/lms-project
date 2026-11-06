@@ -44,6 +44,12 @@ class Payment(models.Model):
         null=True,
         blank=True
     )
+    gateway_order_id = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+    )
     # Using DateTimeField with auto_now_add and auto_now to automatically set timestamps for creation and updates
     # This allows for easy tracking of when payments were made and last updated without needing to manually set these fields
     created_at = models.DateTimeField(auto_now_add=True)

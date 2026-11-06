@@ -54,6 +54,7 @@ urlpatterns = [
     ),
     # Including progress app URLs under the /api/progress/ path, which will route requests to the views defined in the progress app's urls.py file, allowing for modular organization of API endpoints related to user progress tracking
     path('api/progress/', include('progress.urls')),
+    path('api/notifications/', include('notification.urls')),
     # Including dashboard app URLs under the /api/dashboard/ path, which will route requests to the views defined in the dashboard app's urls.py file, allowing for modular organization of API endpoints related to user dashboards and analytics
     path('api/dashboard/',include('dashboard.urls')),
     

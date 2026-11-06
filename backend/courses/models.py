@@ -10,6 +10,7 @@ class Course(models.Model):
     decimal_places=2,
     default=0
    )
+    thumbnail_url = models.URLField(blank=True)
     instructor = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -101,4 +102,26 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.student.username} enrolled in {self.course.title}"  
+
+
+class Wishlist(models.Model):
+    student = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='wishlist_items',
+    )
+    course = models.ForeignKey(
+        Course,
+        on_delete=models.CASCADE,
+        related_name='wishlisted_by',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['student', 'course'], name='unique_student_course_wishlist'),
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} wishes for {self.course.title}"
       

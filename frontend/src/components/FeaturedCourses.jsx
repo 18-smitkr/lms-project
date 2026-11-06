@@ -1,25 +1,29 @@
-function FeaturedCourses() {
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import API from "../api/axios";
 
-  const courses = [
-    {
-      title: "Django for beginner",
-      description:
-        "Learn Django from basics and build real world web applications.",
-      students: "1200+ Students",
-    },
-    {
-      title: "Java Mastery",
-      description:
-        "Master Java concepts and prepare yourself for backend development.",
-      students: "950+ Students",
-    },
-    {
-      title: "Web Development with Gen AI",
-      description:
-        "Build modern websites using React, AI tools and latest technologies.",
-      students: "800+ Students",
-    },
-  ];
+function FeaturedCourses() {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    API.get("courses/")
+      .then((response) => {
+        if (active) setCourses(response.data || []);
+      })
+      .catch(() => {
+        if (active) setError("Featured courses are temporarily unavailable.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <section
@@ -94,10 +98,16 @@ function FeaturedCourses() {
           "
         >
 
-          {courses.map((course, index) => (
+          {loading ? (
+            <p className="col-span-full text-center text-gray-400">Loading featured courses...</p>
+          ) : error ? (
+            <p role="status" className="col-span-full text-center text-gray-400">{error}</p>
+          ) : courses.length === 0 ? (
+            <p className="col-span-full text-center text-gray-400">No courses are available yet.</p>
+          ) : courses.slice(0, 3).map((course, index) => (
 
             <div
-              key={index}
+              key={course.id}
               className="
               group
               bg-[#181818]
@@ -165,11 +175,12 @@ function FeaturedCourses() {
                 text-gray-300
                 "
               >
-                👥 {course.students}
+                ₹{course.price}
               </div>
 
 
-              <button
+              <Link
+                to={`/courses/${course.id}`}
                 className="
                 mt-8
                 px-5
@@ -183,7 +194,7 @@ function FeaturedCourses() {
                 "
               >
                 View Course
-              </button>
+              </Link>
 
 
             </div>

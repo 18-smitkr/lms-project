@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import complete_lesson, course_progress, my_progress
+from .views import complete_lesson, course_progress, my_certificates, my_progress
 
 urlpatterns = [
     # Complete Lesson API
@@ -11,5 +11,6 @@ urlpatterns = [
     # Course Progress API
     # shows how much of a course has been completed by a student
     path('course-progress/<int:course_id>/',course_progress,name='course_progress'),
+    path('certificates/', my_certificates, name='my_certificates'),
 
 ]

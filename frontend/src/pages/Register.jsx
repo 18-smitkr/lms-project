@@ -7,9 +7,10 @@ import {
   Lock,
   Eye,
   EyeOff,
-  GraduationCap,
 } from "lucide-react";
 import { registerUser } from "../api/auth";
+import BackButton from "../components/common/BackButton";
+import Brand from "../components/Brand";
 
 function Register() {
   const navigate = useNavigate();
@@ -21,7 +22,6 @@ function Register() {
     username: "",
     email: "",
     phone_number: "",
-    role: "student",
     password: "",
     confirmPassword: "",
   });
@@ -56,7 +56,6 @@ function Register() {
         email: formData.email,
         password: formData.password,
         phone_number: formData.phone_number,
-        role: formData.role,
       });
 
       setSuccess("Registration Successful!");
@@ -89,15 +88,10 @@ function Register() {
   };
 
   return (
-    <section className="relative h-screen overflow-hidden flex items-center justify-center bg-[#09090B] px-4">
-
-      {/* Background Glow */}
-
-      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-162.5-[650px] rounded-full bg-purple-700/20 blur-[170px]" />
-
-      <div className="absolute bottom-0 left-0 w-72 h-72 bg-fuchsia-600/10 rounded-full blur-[140px]" />
-
-      <div className="absolute top-10 right-0 w-72 h-72 bg-violet-600/10 rounded-full blur-[140px]" />
+    <section className="relative flex min-h-screen items-center justify-center overflow-x-hidden bg-[#09090B] px-4 py-16">
+      <div className="absolute left-4 top-4 z-10 sm:left-6 sm:top-6">
+        <BackButton fallbackTo="/login" label="Back" />
+      </div>
 
       {/* Card */}
 
@@ -117,10 +111,7 @@ function Register() {
         "
       >
 
-        <h1 className="text-3xl font-bold text-center">
-          <span className="text-white">Learn</span>
-          <span className="text-purple-500">ova</span>
-        </h1>
+        <div className="flex justify-center"><Brand portal="Student portal" /></div>
 
         <h2 className="text-[42px] font-bold text-center text-white mt-5">
           Create Account
@@ -139,7 +130,7 @@ function Register() {
 
           <div className="grid md:grid-cols-2 gap-4">
 
-            <div className="relative">
+            <div className="icon-input-field relative">
 
               <User
                 size={18}
@@ -153,12 +144,12 @@ function Register() {
                 value={formData.username}
                 onChange={handleChange}
                 required
-                className="w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
+                className="icon-field-input w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
               />
 
             </div>
 
-            <div className="relative">
+            <div className="icon-input-field relative">
 
               <Mail
                 size={18}
@@ -172,17 +163,17 @@ function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
+                className="icon-field-input w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
               />
 
             </div>
 
           </div>
-              {/* Phone + Role */}
+              {/* Phone */}
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div>
 
-            <div className="relative">
+            <div className="icon-input-field relative">
 
               <Phone
                 size={18}
@@ -195,27 +186,8 @@ function Register() {
                 placeholder="Phone Number"
                 value={formData.phone_number}
                 onChange={handleChange}
-                className="w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
+                className="icon-field-input w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
               />
-
-            </div>
-
-            <div className="relative">
-
-              <GraduationCap
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
-              />
-
-              <select
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                className="w-full appearance-none bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-white outline-none focus:border-purple-500"
-              >
-                <option value="student">Student</option>
-                <option value="instructor">Instructor</option>
-              </select>
 
             </div>
 
@@ -225,7 +197,7 @@ function Register() {
 
           <div className="grid md:grid-cols-2 gap-4">
 
-            <div className="relative">
+            <div className="icon-input-field relative">
 
               <Lock
                 size={18}
@@ -239,7 +211,7 @@ function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-12 py-3 text-white outline-none focus:border-purple-500"
+                className="icon-field-input w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-12 py-3 text-white outline-none focus:border-purple-500"
               />
 
               <button
@@ -256,7 +228,7 @@ function Register() {
 
             </div>
 
-            <div className="relative">
+            <div className="icon-input-field relative">
 
               <Lock
                 size={18}
@@ -270,7 +242,7 @@ function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-12 py-3 text-white outline-none focus:border-purple-500"
+                className="icon-field-input w-full bg-[#1C1C28] border border-white/10 rounded-xl pl-11 pr-12 py-3 text-white outline-none focus:border-purple-500"
               />
 
               <button

@@ -1,12 +1,31 @@
 from django.urls import path
+
 from .views import (
     student_dashboard,
-    instructor_dashboard
+    instructor_dashboard,
+    sidebar_data,
+    course_analytics,
 )
 
 urlpatterns = [
-  # Student Dashboard API
-  path('student-dashboard/',student_dashboard,name='student_dashboard'),
-  # Instructor Dashboard API
-  path('instructor-dashboard/',instructor_dashboard,name='instructor_dashboard'),
+
+    path(
+        "student/",
+        student_dashboard
+    ),
+
+    path(
+        "instructor/",
+        instructor_dashboard
+    ),
+
+    path(
+        "sidebar/",
+        sidebar_data
+    ),
+    path(
+        "course-analytics/<int:course_id>/",
+        course_analytics
+    ),
+
 ]

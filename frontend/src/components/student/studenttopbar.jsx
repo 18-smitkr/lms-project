@@ -104,27 +104,34 @@
 //     </header>
 //   );
 // }
-
-
 import ProfileDropdown from "./ProfileDropdown";
+import { Menu } from "lucide-react";
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick, isMenuOpen, title = "Dashboard" }) {
   return (
-    <header className="sticky top-0 z-30 bg-[#09090F]/90 backdrop-blur-xl border-b border-white/5">
-      <div className="h-20 px-8 flex items-center justify-between">
-
-        <div>
-          <h1 className="text-3xl font-bold text-white">
-            Dashboard
-          </h1>
-
-          <p className="text-white/40 mt-1">
-            Welcome back 👋
-          </p>
+    <header className="sticky top-0 z-30 border-b border-[#E5E9EF] bg-white/95 backdrop-blur">
+      <div className="flex min-h-16 items-center justify-between gap-3 px-4 sm:h-20 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <button
+            type="button"
+            onClick={onMenuClick}
+            aria-label="Open student navigation"
+            aria-controls="student-sidebar"
+            aria-expanded={isMenuOpen}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#E7E7E7] bg-white text-[#7D7D7D] transition hover:border-[#FE580D] hover:text-[#C44808] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FE580D] md:hidden"
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="truncate text-2xl font-bold text-[#171717] sm:text-3xl">
+              {title}
+            </h1>
+            <p className="mt-1 hidden text-sm text-[#737373] sm:block">
+              Welcome back
+            </p>
+          </div>
         </div>
-
         <ProfileDropdown />
-
       </div>
     </header>
   );

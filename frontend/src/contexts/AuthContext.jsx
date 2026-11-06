@@ -5,61 +5,58 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-
   const [loading, setLoading] = useState(true);
 
-  // Fetch Logged In User
   const fetchProfile = async () => {
+    const token = localStorage.getItem("access");
+
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return null;
+    }
+
     try {
       const res = await API.get("auth/profile/");
-
       setUser(res.data);
-    } catch (err) {
-      console.log("Profile Error:", err);
-
+      return res.data;
+    } catch {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
-
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("access");
-
-    if (token) {
-      fetchProfile();
-    } else {
-      setLoading(false);
-    }
+    void Promise.resolve().then(fetchProfile);
   }, []);
 
-  // Logout
+  const login = async (credentials) => {
+    const res = await API.post("auth/login/", credentials);
+    localStorage.setItem("access", res.data.access);
+    localStorage.setItem("refresh", res.data.refresh);
+    const profile = await fetchProfile();
+    return profile;
+  };
+
   const logout = () => {
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-
     setUser(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        setUser,
-        loading,
-        fetchProfile,
-        logout,
-      }}
+      value={{ user, setUser, loading, fetchProfile, login, logout }}
     >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom Hook
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+// The hook shares this context module with the provider by design.
+// eslint-disable-next-line react-refresh/only-export-components
+export const useAuth = () => useContext(AuthContext);

@@ -21,6 +21,9 @@ from .views import (
     delete_lesson,
     lesson_detail,
     website_stats,
+    my_wishlist,
+    wishlist_course,
+    course_students,
 )
 
 urlpatterns = [
@@ -43,5 +46,8 @@ urlpatterns = [
     path('delete-lesson/<int:lesson_id>/',delete_lesson,name='delete_lesson'),
     path('lesson-detail/<int:lesson_id>/',lesson_detail,name='lesson_detail'),
     path('course-modules/<int:course_id>/',course_modules,name='course_modules'),
-    path("stats/", website_stats)
+    path("stats/", website_stats),
+    path('wishlist/', my_wishlist, name='my_wishlist'),
+    path('wishlist/<int:course_id>/', wishlist_course, name='wishlist_course'),
+    path('course-students/<int:course_id>/', course_students, name='course_students'),
 ]
